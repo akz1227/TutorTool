@@ -141,18 +141,62 @@ function calc(o,R){
   case 'perp':return R[1].t==='c'?null:{t:'l',x:R[0].x,y:R[0].y,dx:-R[1].dy,dy:R[1].dx};
   case 'para':return R[1].t==='c'?null:{t:'l',x:R[0].x,y:R[0].y,dx:R[1].dx,dy:R[1].dy};
   case 'pbis':{const l=mkLine(R[0],R[1]);return l&&{t:'l',x:(R[0].x+R[1].x)/2,y:(R[0].y+R[1].y)/2,dx:-l.dy,dy:l.dx}}
-  case 'abis':{
-   const l1=R[0],v=R[1],l2=R[2];
-   if(!l1||l1.t!=='l'||!v||v.t!=='p'||!l2||l2.t!=='l')return null;
-   const eps=12;
-   const d1=Math.abs((v.x-l1.x)*l1.dy-(v.y-l1.y)*l1.dx);
-   const d2=Math.abs((v.x-l2.x)*l2.dy-(v.y-l2.y)*l2.dx);
-   if(d1>eps||d2>eps)return null;
-   let ax=l1.dx,ay=l1.dy,bx=l2.dx,by=l2.dy;
-   if(ax*bx+ay*by<0){bx=-bx;by=-by}
-   let dx=ax+bx,dy=ay+by,L=Math.hypot(dx,dy);
-   if(L<1e-6)return null;
-   return {t:'l',x:v.x,y:v.y,dx:dx/L,dy:dy/L};
+  case 'abis': {
+   // Accept both infinite lines and finite segments.
+   const asLine = g => {
+    if (!g || (g.t !== 'l' && g.t !== 's')) return null;
+    return {
+     x: g.x,
+     y: g.y,
+     dx: g.dx,
+     dy: g.dy
+    };
+   };
+
+   const l1 = asLine(R[0]);
+   const v = R[1];
+   const l2 = asLine(R[2]);
+
+   if (!l1 || !v || v.t !== 'p' || !l2) return null;
+
+   // Confirm that the vertex lies on both lines.
+   const eps = 12;
+   const d1 = Math.abs(
+    (v.x - l1.x) * l1.dy -
+    (v.y - l1.y) * l1.dx
+   );
+   const d2 = Math.abs(
+    (v.x - l2.x) * l2.dy -
+    (v.y - l2.y) * l2.dx
+   );
+
+   if (d1 > eps || d2 > eps) return null;
+
+   let ax = l1.dx;
+   let ay = l1.dy;
+   let bx = l2.dx;
+   let by = l2.dy;
+
+   // Align directions to construct the internal angle bisector.
+   if (ax * bx + ay * by < 0) {
+    bx = -bx;
+    by = -by;
+   }
+
+   const dx = ax + bx;
+   const dy = ay + by;
+   const len = Math.hypot(dx, dy);
+
+   // Avoid an undefined bisector for parallel directions.
+   if (len < 1e-6) return null;
+
+   return {
+    t: 'l',
+    x: v.x,
+    y: v.y,
+    dx: dx / len,
+    dy: dy / len
+   };
   }
   case 'circ':return {t:'c',x:R[0].x,y:R[0].y,r:Math.hypot(R[1].x-R[0].x,R[1].y-R[0].y)};
   case 'int':{const c=inter(R[0],R[1]);return c[o.n]?{t:'p',...c[o.n]}:null}
