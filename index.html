@@ -319,10 +319,44 @@ function renderPages(){const el=$('#pages');el.innerHTML='<span class="plab">Pag
 function setPage(i){DOC.cur=i;S=DOC.pages[i];pend=[];hover=null;save();refreshAll()}
 let delArm=0;
 $('#pages').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.p!==undefined)setPage(+b.dataset.p);else if(b.id==='addpg'){DOC.pages.push(newPage(S.paper));setPage(DOC.pages.length-1);toast('Page '+DOC.pages.length+' added.')}else if(b.id==='delpg'){if(!delArm){b.textContent='Click again to delete';delArm=setTimeout(()=>{delArm=0;renderPages()},3000);return}clearTimeout(delArm);delArm=0;DOC.pages.splice(DOC.cur,1);setPage(Math.min(DOC.cur,DOC.pages.length-1))}});
-cv.addEventListener('pointerdown',e=>{if(e.button>0)return;e.preventDefault();try{cv.setPointerCapture(e.pointerId)}catch(_){}cur=pos(e);drag=null;TOOLS[tool].down(cur);afterAction()});
-cv.addEventListener('pointermove',e=>{cur=pos(e);if(drag){drag.move(cur);draw();return}if(tool!=='pen'){const h=hitPoint(cur)||hitLine(cur,true);hover=h?h.id:null}draw()});
-function endDrag(){if(!drag)return;const d=drag;drag=null;d.up();afterAction()}
-cv.addEventListener('pointerup',endDrag);cv.addEventListener('pointercancel',endDrag);cv.addEventListener('pointerleave',()=>{if(!drag){cur=null;hover=null;draw()}});
+
+/* Palm rejection: the canvas ignores finger/palm (touch) input completely.
+   Pen and mouse are accepted. While one pointer is drawing, every other
+   pointer (e.g. a palm resting next to the pen) is ignored. */
+let activePointer=null;
+const rejected=e=>e.pointerType==='touch';
+/* Block touch-driven scrolling/zooming/long-press on the canvas too. */
+['touchstart','touchmove','touchend','touchcancel'].forEach(t=>cv.addEventListener(t,e=>{if(e.cancelable)e.preventDefault()},{passive:false}));
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+cv.addEventListener('pointerdown',e=>{
+ if(rejected(e))return;
+ if(e.button>0)return;
+ if(activePointer!==null)return;
+ e.preventDefault();
+ activePointer=e.pointerId;
+ try{cv.setPointerCapture(e.pointerId)}catch(_){}
+ cur=pos(e);drag=null;TOOLS[tool].down(cur);afterAction();
+});
+cv.addEventListener('pointermove',e=>{
+ if(rejected(e))return;
+ if(activePointer!==null&&e.pointerId!==activePointer)return;
+ cur=pos(e);
+ if(drag){drag.move(cur);draw();return}
+ if(tool!=='pen'){const h=hitPoint(cur)||hitLine(cur,true);hover=h?h.id:null}
+ draw();
+});
+function endDrag(e){
+ if(rejected(e))return;
+ if(activePointer!==null&&e.pointerId!==activePointer)return;
+ activePointer=null;
+ if(!drag)return;
+ const d=drag;drag=null;d.up();afterAction();
+}
+cv.addEventListener('pointerup',endDrag);
+cv.addEventListener('pointercancel',endDrag);
+cv.addEventListener('pointerleave',e=>{if(rejected(e))return;if(!drag){cur=null;hover=null;draw()}});
+
 $('#tools').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(b)setTool(b.dataset.t)});
 $('#inks').addEventListener('click',e=>{const b=e.target.closest('.sw');if(!b)return;ink=b.dataset.v;if(tool==='erase')tool='pen';pend=[];syncUI();draw()});
 $('#paper').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.paper=b.dataset.v;save();syncUI();draw()});
