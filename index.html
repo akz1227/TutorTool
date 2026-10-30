@@ -25,7 +25,8 @@ button{cursor:pointer}
 button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid var(--blush);outline-offset:2px}
 .app{max-width:1400px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
 .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.top h1{font:700 23px/1 var(--f-display);color:var(--accent);margin:0 auto 0 0;letter-spacing:-.02em}
+.top h1{font:700 23px/1 var(--f-display);color:var(--accent);margin:0 12px 0 0;letter-spacing:-.02em}
+.top .pages{margin-right:auto}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border:1px solid var(--line);background:var(--panel);border-radius:8px;font-weight:500}
 .btn:hover{background:var(--hover)}
 .btn:disabled{opacity:.45;cursor:default}
@@ -51,14 +52,18 @@ button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid va
 .main{display:grid;grid-template-columns:230px minmax(0,1fr);gap:10px;align-items:start}
 .stagewrap{min-width:0;display:flex;flex-direction:column;gap:6px}
 .stage{background:var(--stage);border:1px solid var(--line);border-radius:10px;padding:10px;overflow:auto}
-.stage.zoomed{max-height:calc(100vh - 140px)}
+.stage.zoomed{max-height:calc(100vh - 120px)}
 #cv{display:block;width:100%;margin:0 auto;height:auto;background:var(--paper);touch-action:none;box-shadow:0 2px 10px rgba(50,20,30,.14);cursor:crosshair;border-radius:2px}
 .pages{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .pages .plab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-right:2px}
 .pages .pg{min-width:36px;justify-content:center;padding:5px 10px}
 .hint{display:flex;gap:5px;align-items:center;min-height:22px;color:var(--muted);font-size:13px}
 .hint b{color:var(--accent);font-weight:700}
-.side{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0;max-height:calc(100vh - 16px);position:sticky;top:8px;overflow:hidden}
+.side{background:var(--panel);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0;flex:1 1 auto;min-height:0;overflow:hidden}
+.left{position:sticky;top:8px;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 16px);min-width:0}
+.paperbtn{border:1px solid var(--line);background:var(--panel);border-radius:10px;font-weight:600;flex:none}
+#paperDlg{width:330px}
+.zr{flex-wrap:nowrap}.zr input[type=range]{flex:1;min-width:60px;width:auto}.zr .btn{padding:6px 10px}
 .sv{display:flex;flex-direction:column;min-height:0;flex:1}
 #tools{display:flex;flex-direction:column;gap:3px;padding:8px;overflow:auto}
 .h2r{display:flex;align-items:center;gap:10px}
@@ -97,33 +102,24 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 .fld{display:flex;align-items:center;gap:5px;font:500 12px var(--f-mono);color:var(--muted)}
 .fld input{width:72px;border:1px solid var(--line);border-radius:6px;padding:5px 6px;background:var(--panel);font:500 13px var(--f-mono);color:var(--fg)}
 #thicknessValue,#zoomValue{min-width:46px;color:var(--accent);font:500 12px var(--f-mono)}
-@media(max-width:860px){.main{grid-template-columns:minmax(0,1fr)}.side{position:static;max-height:none}.stage{padding:6px}#tools{flex-direction:row;flex-wrap:wrap}.tool{width:auto}.tool.sep{margin-top:0;border-top:1px solid transparent;padding-top:7px;border-radius:8px}}
+@media(max-width:860px){.main{grid-template-columns:minmax(0,1fr)}.left{position:static;max-height:none}.side{flex:none}.stage{padding:6px}#tools{flex-direction:row;flex-wrap:wrap}.tool{width:auto}.tool.sep{margin-top:0;border-top:1px solid transparent;padding-top:7px;border-radius:8px}}
 @media(max-width:480px){.tool span{font-size:12px}.top h1{width:100%;margin-bottom:5px}.stage{padding:4px}}
-@media print{body{padding:0;background:#fff}.top,.bar,.pages,.oxydlg,.pendlg,.hint,.side,.toast{display:none!important}.main{display:block}.stage{padding:0;border:0;background:#fff}#cv{box-shadow:none;width:100%!important}.stage{overflow:visible;max-height:none!important}}
+@media print{body{padding:0;background:#fff}.top,.left,.pages,.oxydlg,.pendlg,.hint,.side,.toast{display:none!important}.main{display:block}.stage{padding:0;border:0;background:#fff}#cv{box-shadow:none;width:100%!important}.stage{overflow:visible;max-height:none!important}}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="top">
     <h1>Geometry Sketchpad</h1>
+    <div class="pages" id="pages"></div>
     <button class="btn" id="undo" title="Undo (Ctrl+Z)">Undo</button>
     <button class="btn" id="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
     <button class="btn" id="clear">Clear all</button>
     <button class="btn primary" id="pdf">Export PDF</button>
   </div>
-  <div class="bar">
-    <div class="grp"><span>Paper</span><div class="seg" id="paper">
-      <button data-v="blank" aria-pressed="true">Blank</button><button data-v="dot" aria-pressed="false">Dot</button><button data-v="line" aria-pressed="false">Line</button><button data-v="box" aria-pressed="false">Box</button><button data-v="oxy" aria-pressed="false">Oxy</button>
-    </div></div>
-    <div class="grp"><span>Scale paper</span><div class="row">
-      <button class="btn" id="zoomOut" aria-label="Zoom out" title="Zoom out (-)">&minus;</button>
-      <input id="zoom" type="range" min="25" max="300" step="5" value="100" aria-label="Paper scale" style="width:120px">
-      <button class="btn" id="zoomIn" aria-label="Zoom in" title="Zoom in (+)">+</button>
-      <output id="zoomValue">100%</output>
-      <button class="btn" id="zoomReset" title="Fit to width (0)">Fit</button>
-    </div></div>
-    </div>
   <div class="main">
+    <div class="left" id="left">
+      <button class="tool paperbtn" id="paperBtn" aria-pressed="false" aria-haspopup="dialog" title="Paper settings"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4"/></svg><span>Paper</span></button>
     <aside class="side" id="side">
       <div class="sv" id="toolsView">
         <h2>Tools</h2>
@@ -134,8 +130,8 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
         <ul id="list"></ul>
       </div>
     </aside>
+    </div>
     <div class="stagewrap">
-      <div class="pages" id="pages"></div>
       <div class="stagebox">
         <div class="stage"><canvas id="cv" width="2400" height="1697" aria-label="Drawing paper"></canvas></div>
         <div class="oxydlg" id="oxyDlg" role="group" aria-label="Oxy settings" hidden>
@@ -162,6 +158,18 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
   
   </div>
 </div>
+<div class="pendlg" id="paperDlg" role="dialog" aria-label="Paper settings" hidden>
+  <div class="grp"><span>Paper</span><div class="seg" id="paper">
+    <button data-v="blank" aria-pressed="true">Blank</button><button data-v="dot" aria-pressed="false">Dot</button><button data-v="line" aria-pressed="false">Line</button><button data-v="box" aria-pressed="false">Box</button><button data-v="oxy" aria-pressed="false">Oxy</button>
+  </div></div>
+  <div class="grp"><span>Scale paper</span><div class="row zr">
+    <button class="btn" id="zoomOut" aria-label="Zoom out" title="Zoom out (-)">&minus;</button>
+    <input id="zoom" type="range" min="25" max="300" step="5" value="100" aria-label="Paper scale">
+    <button class="btn" id="zoomIn" aria-label="Zoom in" title="Zoom in (+)">+</button>
+    <output id="zoomValue">100%</output>
+    <button class="btn" id="zoomReset" title="Fit to width (0)">Fit</button>
+  </div></div>
+</div>
 <div class="pendlg" id="penDlg" role="dialog" aria-label="Pen settings" hidden>
   <div class="grp"><span>Ink</span><div class="row" id="inks">
     <button class="sw red" data-v="red" aria-label="Red" aria-pressed="false"></button>
@@ -183,7 +191,7 @@ const PAPER='#FFFDF9';
 const $=s=>document.querySelector(s),cv=$('#cv'),ctx=cv.getContext('2d');
 const newPage=paper=>({paper:paper||'blank',objs:[],strokes:[],n:{p:0,l:0,s:0,c:0},id:1,ax:{sx:1,sy:1,maxx:30,maxy:21}});
 let DOC={labels:true,cur:0,pages:[newPage()]},S=DOC.pages[0];
-let ink='black',tool='pen',pend=[],hover=null,cur=null,penWidth=3.2,penOpen=false;
+let ink='black',tool='pen',pend=[],hover=null,cur=null,penWidth=3.2,penOpen=false,paperOpen=false;
 let GC=new Map(),M=new Map();
 const KIND={xy:'Point (x, y)',on:'Point on object',free:'Point',mid:'Midpoint',int:'Intersection',line:'Line',perp:'Perpendicular',para:'Parallel',pbis:'Perp. bisector',abis:'Angle bisector',seg:'Segment',circ:'Circle'};
 const isPt=o=>o.k==='free'||o.k==='mid'||o.k==='int'||o.k==='on'||o.k==='xy';
@@ -344,16 +352,30 @@ function hitLabel(w){
  }
  return null;
 }
-function render(B,ui){GC.clear();M=new Map(S.objs.map(o=>[o.id,o]));B.begin&&B.begin();paperPattern(B);for(const s of S.strokes)B.stroke(s.pts,INK[s.c]||INK.black,s.w||3.2);const vis=S.objs.filter(o=>o.vis);if(ui&&hover!=null){const h=M.get(hover),g=h&&h.vis&&geo(hover);if(g){if(g.t==='p')B.disc(g.x,g.y,15,'#611224',.22);else shape(B,g,'#611224',9,.22)}}for(const o of vis){if(isPt(o))continue;const g=geo(o.id);if(g)shape(B,g,INK[o.c]||INK.black,2.3)}for(const o of vis){if(!isPt(o))continue;const g=geo(o.id);if(g){B.disc(g.x,g.y,8,PAPER);B.disc(g.x,g.y,4.8,INK[o.c]||INK.black)}}if(DOC.labels)for(const o of vis){if(!o.name)continue;const g=geo(o.id);if(!g)continue;const p=getLabelPos(o);if(p)B.text(o.name,p[0],p[1],INK[o.c]||INK.black,23)}if(ui)overlay(B)}
+function render(B,ui){GC.clear();M=new Map(S.objs.map(o=>[o.id,o]));B.begin&&B.begin();paperPattern(B);for(const s of S.strokes)B.stroke(s.pts,INK[s.c]||INK.black,s.w||3.2,1,true);const vis=S.objs.filter(o=>o.vis);if(ui&&hover!=null){const h=M.get(hover),g=h&&h.vis&&geo(hover);if(g){if(g.t==='p')B.disc(g.x,g.y,15,'#611224',.22);else shape(B,g,'#611224',9,.22)}}for(const o of vis){if(isPt(o))continue;const g=geo(o.id);if(g)shape(B,g,INK[o.c]||INK.black,2.3)}for(const o of vis){if(!isPt(o))continue;const g=geo(o.id);if(g){B.disc(g.x,g.y,8,PAPER);B.disc(g.x,g.y,4.8,INK[o.c]||INK.black)}}if(DOC.labels)for(const o of vis){if(!o.name)continue;const g=geo(o.id);if(!g)continue;const p=getLabelPos(o);if(p)B.text(o.name,p[0],p[1],INK[o.c]||INK.black,23)}if(ui)overlay(B)}
 function overlay(B){for(const p of pend){const g=geo(p.id);if(!g)continue;if(g.t==='p')B.circle(g.x,g.y,12,'#611224',2.4);else shape(B,g,'#611224',7,.35)}const last=pend.length&&geo(pend[pend.length-1].id);if(last&&last.t==='p'&&cur){if(tool==='circle')B.circle(last.x,last.y,Math.hypot(cur.x-last.x,cur.y-last.y),'#611224',1.8,.7);else if(['line','seg','mid','pbis','abis'].includes(tool))B.stroke([[last.x,last.y],[cur.x,cur.y]],'#611224',1.8,.7)}if(tool==='erase'&&cur)B.circle(cur.x,cur.y,16,'#611224',1.6,.9)}
+/* Pen strokes are drawn as smooth curves (quadratic through the midpoints); other polylines stay straight. */
+function tracePath(g,p,sm){
+ g.beginPath();g.moveTo(p[0][0],p[0][1]);
+ if(p.length===1){g.lineTo(p[0][0]+.01,p[0][1]);return}
+ if(!sm||p.length<3){for(let i=1;i<p.length;i++)g.lineTo(p[i][0],p[i][1]);return}
+ for(let i=1;i<p.length-1;i++)g.quadraticCurveTo(p[i][0],p[i][1],(p[i][0]+p[i+1][0])/2,(p[i][1]+p[i+1][1])/2);
+ g.lineTo(p[p.length-1][0],p[p.length-1][1]);
+}
 const CB={
- stroke(p,c,w,a=1){ctx.globalAlpha=a;ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineJoin='round';ctx.lineCap='round';ctx.beginPath();p.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));if(p.length===1)ctx.lineTo(p[0][0]+.01,p[0][1]);ctx.stroke();ctx.globalAlpha=1},
+ stroke(p,c,w,a=1,sm){ctx.globalAlpha=a;ctx.strokeStyle=c;ctx.lineWidth=w;ctx.lineJoin='round';ctx.lineCap='round';tracePath(ctx,p,sm);ctx.stroke();ctx.globalAlpha=1},
  circle(x,y,r,c,w,a=1){ctx.globalAlpha=a;ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.arc(x,y,Math.max(r,.01),0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1},
  disc(x,y,r,c,a=1){ctx.globalAlpha=a;ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1},
  text(s,x,y,c,sz,al){ctx.font='italic '+sz+'px Georgia,"Times New Roman",serif';ctx.fillStyle=c;ctx.textAlign=al==='c'?'center':al==='r'?'right':'left';ctx.fillText(s,x,y);ctx.textAlign='left'},
  begin(){ctx.fillStyle=PAPER;ctx.fillRect(0,0,W,H)}
 };
-function draw(){render(CB,true)}
+function fitCanvas(){
+ const r=cv.getBoundingClientRect();if(!r.width)return;
+ const want=Math.max(600,Math.min(5400,Math.round(r.width*(window.devicePixelRatio||1))));
+ if(Math.abs(cv.width-want)>1){cv.width=want;cv.height=Math.round(want*H/W);ctx.setTransform(want/W,0,0,want/W,0,0)}
+}
+function draw(){fitCanvas();render(CB,true)}
+let raf=0;function scheduleDraw(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;draw()})}
 const KEY='geo-sketchpad-v1';let hist=[],hi=0,dirty=false,drag=null;
 function persist(j){try{localStorage.setItem(KEY,j)}catch(e){}}
 function save(){const j=JSON.stringify(DOC);if(j===hist[hi])return;hist=hist.slice(0,hi+1);hist.push(j);hi++;if(hist.length>150){hist.shift();hi--}persist(j)}
@@ -416,7 +438,7 @@ TOOLS.label={label:'Label',icon:ic('<path d="M4 5h16M12 5v14M8 19h8"/>'),hint:()
 }};
 function buildTools(){const box=$('#tools');for(const id of ['move','pen','erase','label','point','mid','line','seg','perp','para','pbis','abis','circle']){const t=TOOLS[id],b=document.createElement('button');b.className='tool';b.dataset.t=id;b.setAttribute('aria-pressed','false');b.innerHTML=t.icon+'<span>'+t.label+'</span>';box.append(b)}const ob=document.createElement('button');ob.className='tool sep';ob.id='objOpen';ob.innerHTML=ic('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>')+'<span>Objects</span>';box.append(ob)}
 function setTool(t){tool=t;if(t!=='pen')penOpen=false;pend=[];hover=null;syncUI();draw()}
-function syncUI(){document.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===tool)));document.querySelectorAll('#inks .sw').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===ink)));document.querySelectorAll('#paper button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.paper)));$('#lbl').checked=DOC.labels;{const oxy=S.paper==='oxy';$('#oxyDlg').hidden=!oxy;placeOxy();if(oxy){const a=ax();for(const [id,v] of [['#ux',a.sx],['#uy',a.sy],['#mxx',a.maxx],['#mxy',a.maxy]])if(document.activeElement!==$(id))$(id).value=v}}renderPages();{const pd=$('#penDlg');pd.hidden=!(penOpen&&tool==='pen');if(!pd.hidden){$('#penPrev').style.height=penWidth+'px';$('#penPrev').style.background=INK[ink];placePen()}}$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;cv.style.cursor=tool==='erase'?'cell':tool==='move'?'grab':tool==='label'?'move':'crosshair';$('#hint').innerHTML='<b>'+TOOLS[tool].label+'.</b> '+TOOLS[tool].hint()}
+function syncUI(){document.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===tool)));document.querySelectorAll('#inks .sw').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===ink)));document.querySelectorAll('#paper button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.paper)));$('#lbl').checked=DOC.labels;{const oxy=S.paper==='oxy';$('#oxyDlg').hidden=!oxy;placeOxy();if(oxy){const a=ax();for(const [id,v] of [['#ux',a.sx],['#uy',a.sy],['#mxx',a.maxx],['#mxy',a.maxy]])if(document.activeElement!==$(id))$(id).value=v}}renderPages();{const pd=$('#penDlg');pd.hidden=!(penOpen&&tool==='pen');if(!pd.hidden){$('#penPrev').style.height=penWidth+'px';$('#penPrev').style.background=INK[ink];placePen()}}{const dd=$('#paperDlg');dd.hidden=!paperOpen;$('#paperBtn').setAttribute('aria-pressed',String(paperOpen));if(!dd.hidden)placePaper()}$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;cv.style.cursor=tool==='erase'?'cell':tool==='move'?'grab':tool==='label'?'move':'crosshair';$('#hint').innerHTML='<b>'+TOOLS[tool].label+'.</b> '+TOOLS[tool].hint()}
 function kindText(o){if(S.paper==='oxy'&&isPt(o)){const g=geo(o.id);if(g){const m=toMath(g.x,g.y);return '('+fmt(m.x)+', '+fmt(m.y)+')'}}return KIND[o.k]}
 function renderList(){GC.clear();M=new Map(S.objs.map(o=>[o.id,o]));const ul=$('#list');if(!S.objs.length){ul.innerHTML='<li class="empty" style="display:block">Points, lines, segments and circles you construct appear here. Rename, hide or delete them from this list.</li>';return}ul.innerHTML=S.objs.map(o=>`<li data-id="${o.id}" class="${o.vis?'':'off'}"><button class="ic eye" title="${o.vis?'Hide':'Show'}" aria-label="${o.vis?'Hide':'Show'} ${esc(o.name)}">${o.vis?EYE:EYE_OFF}</button><button class="ic cc" title="Change color" aria-label="Change color"><span class="dot" style="background:${INK[o.c]}"></span></button><input class="nm" value="${esc(o.name)}" aria-label="Name" maxlength="24" spellcheck="false"><span class="kind">${kindText(o)}</span><button class="ic del" title="Delete" aria-label="Delete ${esc(o.name)}">${TRASH}</button></li>`).join('')}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -453,9 +475,9 @@ cv.addEventListener('pointermove',e=>{
  if(rejected(e))return;
  if(activePointer!==null&&e.pointerId!==activePointer)return;
  cur=pos(e);
- if(drag){drag.move(cur);draw();return}
+ if(drag){const evs=(e.getCoalescedEvents&&e.getCoalescedEvents())||[];if(evs.length>1)for(const ev of evs)drag.move(pos(ev));else drag.move(cur);scheduleDraw();return}
  if(tool!=='pen'){const h=hitPoint(cur)||hitLine(cur,true);hover=h?h.id:null}
- draw();
+ scheduleDraw();
 });
 function endDrag(e){
  if(rejected(e))return;
@@ -476,20 +498,23 @@ function placeOxy(){
  const visRight=Math.min(c.right,sr.left+st.clientLeft+st.clientWidth),visTop=Math.max(c.top,sr.top+st.clientTop);
  d.style.left='auto';d.style.top=(visTop-box.top+10)+'px';d.style.right=(box.right-visRight+10)+'px';
 }
-function placePen(){
- const d=$('#penDlg'),b=document.querySelector('#tools [data-t="pen"]');if(d.hidden||!b)return;
- const br=b.getBoundingClientRect(),sr=$('#side').getBoundingClientRect(),narrow=window.matchMedia('(max-width:860px)').matches,dr=d.getBoundingClientRect();
+function placePen(){placePop($('#penDlg'),document.querySelector('#tools [data-t="pen"]'))}
+function placePaper(){placePop($('#paperDlg'),$('#paperBtn'))}
+function placePop(d,b){
+ if(d.hidden||!b)return;
+ const br=b.getBoundingClientRect(),sr=$('#left').getBoundingClientRect(),narrow=window.matchMedia('(max-width:860px)').matches,dr=d.getBoundingClientRect();
  let left=narrow?br.left:sr.right+8,top=narrow?br.bottom+6:br.top;
  left=Math.max(8,Math.min(left,window.innerWidth-dr.width-8));top=Math.max(8,Math.min(top,window.innerHeight-dr.height-8));
  d.style.left=left+'px';d.style.top=top+'px';
 }
-window.addEventListener('resize',()=>{placePen();placeOxy()});$('.stage').addEventListener('scroll',placeOxy,{passive:true});window.addEventListener('scroll',placePen,{passive:true});
+window.addEventListener('resize',()=>{placePen();placePaper();placeOxy()});$('.stage').addEventListener('scroll',placeOxy,{passive:true});window.addEventListener('scroll',()=>{placePen();placePaper()},{passive:true});
 $('#tools').addEventListener('click',e=>{
  if(e.target.closest('#objOpen')){setObjMode(true);return}
  const b=e.target.closest('[data-t]');if(!b)return;
- if(b.dataset.t==='pen'){if(tool==='pen'){penOpen=!penOpen;syncUI()}else{setTool('pen');penOpen=true;syncUI()}return}
+ if(b.dataset.t==='pen'){if(tool==='pen'){penOpen=!penOpen;if(penOpen)paperOpen=false;syncUI()}else{setTool('pen');penOpen=true;paperOpen=false;syncUI()}return}
  setTool(b.dataset.t);
 });
+$('#paperBtn').addEventListener('click',()=>{paperOpen=!paperOpen;if(paperOpen)penOpen=false;syncUI()});
 /* Oxy settings: one button opens/closes the fixed dialog at the top-left of the sketch board. */
 function setOxyOpen(v){$('#oxyBody').hidden=!v;$('#oxyToggle').setAttribute('aria-expanded',String(v));$('#oxyToggle').innerHTML='Oxy settings '+(v?'&#9662;':'&#9656;')}
 let oxyOpen=true;setOxyOpen(true);
@@ -538,10 +563,10 @@ L.addEventListener('click',e=>{const li=e.target.closest('li[data-id]');if(!li)r
 L.addEventListener('input',e=>{if(!e.target.classList.contains('nm'))return;const o=S.objs.find(x=>x.id==e.target.closest('li').dataset.id);if(o){o.name=e.target.value;draw()}});
 L.addEventListener('change',e=>{if(e.target.classList.contains('nm'))save()});
 L.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('nm'))e.target.blur()});
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(e.key==='Escape'){pend=[];penOpen=false;syncUI();draw()}else if(!e.ctrlKey&&!e.metaKey&&(e.key==='+'||e.key==='='))setZoom(zoom*1.25);else if(!e.ctrlKey&&!e.metaKey&&(e.key==='-'||e.key==='_'))setZoom(zoom/1.25);else if(!e.ctrlKey&&!e.metaKey&&e.key==='0')setZoom(1)});
-cv.width=W*2;cv.height=H*2;ctx.setTransform(2,0,0,2,0,0);refreshAll();
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(e.key==='Escape'){pend=[];penOpen=false;paperOpen=false;syncUI();draw()}else if(!e.ctrlKey&&!e.metaKey&&(e.key==='+'||e.key==='='))setZoom(zoom*1.25);else if(!e.ctrlKey&&!e.metaKey&&(e.key==='-'||e.key==='_'))setZoom(zoom/1.25);else if(!e.ctrlKey&&!e.metaKey&&e.key==='0')setZoom(1)});
+refreshAll();if(window.ResizeObserver)new ResizeObserver(()=>scheduleDraw()).observe(cv);
 /* Export the current sketch as a printable PDF using the browser's print dialog. */
-$('#pdf').addEventListener('click',()=>{const keep=S;const oldCur=DOC.cur;const printWindow=window.open('','_blank');if(!printWindow){toast('Allow pop-ups to export/print the sketch.');return}let pagesHtml='';for(let i=0;i<DOC.pages.length;i++){S=DOC.pages[i];const off=document.createElement('canvas');off.width=W;off.height=H;const oc=off.getContext('2d');const oldCtx=ctx;/* render through the shared backend below */const backend={begin(){oc.fillStyle=PAPER;oc.fillRect(0,0,W,H)},stroke(p,c,w,a=1){oc.globalAlpha=a;oc.strokeStyle=c;oc.lineWidth=w;oc.lineCap='round';oc.lineJoin='round';oc.beginPath();p.forEach((q,j)=>j?oc.lineTo(q[0],q[1]):oc.moveTo(q[0],q[1]));oc.stroke();oc.globalAlpha=1},circle(x,y,r,c,w,a=1){oc.globalAlpha=a;oc.strokeStyle=c;oc.lineWidth=w;oc.beginPath();oc.arc(x,y,Math.max(.01,r),0,Math.PI*2);oc.stroke();oc.globalAlpha=1},disc(x,y,r,c,a=1){oc.globalAlpha=a;oc.fillStyle=c;oc.beginPath();oc.arc(x,y,r,0,Math.PI*2);oc.fill();oc.globalAlpha=1},text(s,x,y,c,sz,al){oc.fillStyle=c;oc.font='italic '+sz+'px Georgia,serif';oc.textAlign=al==='c'?'center':al==='r'?'right':'left';oc.fillText(s,x,y);oc.textAlign='left'}};render(backend,false);pagesHtml+=`<section><img src="${off.toDataURL('image/png')}"></section>`}S=keep;DOC.cur=oldCur;draw();printWindow.document.write('<!doctype html><html><head><title>Geometry Sketchpad PDF</title><style>@page{size:A4 landscape;margin:8mm}body{margin:0}section{page-break-after:always}section:last-child{page-break-after:auto}img{display:block;width:100%;height:auto}</style></head><body>'+pagesHtml+'<script>window.onload=()=>{window.print()}<\/script></body></html>');printWindow.document.close();toast('Print dialog opened. Choose Save as PDF.')});
+$('#pdf').addEventListener('click',()=>{const keep=S;const oldCur=DOC.cur;const printWindow=window.open('','_blank');if(!printWindow){toast('Allow pop-ups to export/print the sketch.');return}let pagesHtml='';for(let i=0;i<DOC.pages.length;i++){S=DOC.pages[i];const off=document.createElement('canvas');off.width=W;off.height=H;const oc=off.getContext('2d');const oldCtx=ctx;/* render through the shared backend below */const backend={begin(){oc.fillStyle=PAPER;oc.fillRect(0,0,W,H)},stroke(p,c,w,a=1,sm){oc.globalAlpha=a;oc.strokeStyle=c;oc.lineWidth=w;oc.lineCap='round';oc.lineJoin='round';tracePath(oc,p,sm);oc.stroke();oc.globalAlpha=1},circle(x,y,r,c,w,a=1){oc.globalAlpha=a;oc.strokeStyle=c;oc.lineWidth=w;oc.beginPath();oc.arc(x,y,Math.max(.01,r),0,Math.PI*2);oc.stroke();oc.globalAlpha=1},disc(x,y,r,c,a=1){oc.globalAlpha=a;oc.fillStyle=c;oc.beginPath();oc.arc(x,y,r,0,Math.PI*2);oc.fill();oc.globalAlpha=1},text(s,x,y,c,sz,al){oc.fillStyle=c;oc.font='italic '+sz+'px Georgia,serif';oc.textAlign=al==='c'?'center':al==='r'?'right':'left';oc.fillText(s,x,y);oc.textAlign='left'}};render(backend,false);pagesHtml+=`<section><img src="${off.toDataURL('image/png')}"></section>`}S=keep;DOC.cur=oldCur;draw();printWindow.document.write('<!doctype html><html><head><title>Geometry Sketchpad PDF</title><style>@page{size:A4 landscape;margin:8mm}body{margin:0}section{page-break-after:always}section:last-child{page-break-after:auto}img{display:block;width:100%;height:auto}</style></head><body>'+pagesHtml+'<script>window.onload=()=>{window.print()}<\/script></body></html>');printWindow.document.close();toast('Print dialog opened. Choose Save as PDF.')});
 </script>
 </body>
 </html>
