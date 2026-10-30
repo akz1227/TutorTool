@@ -192,6 +192,7 @@ const $=s=>document.querySelector(s),cv=$('#cv'),ctx=cv.getContext('2d');
 const newPage=paper=>({paper:paper||'blank',objs:[],strokes:[],n:{p:0,l:0,s:0,c:0},id:1,ax:{sx:1,sy:1,maxx:30,maxy:21}});
 let DOC={labels:true,cur:0,pages:[newPage()]},S=DOC.pages[0];
 let ink='black',tool='pen',pend=[],hover=null,cur=null,penWidth=3.2,penOpen=false,paperOpen=false;
+let ruler={on:false,x:W/2,y:H/2,a:0};
 let GC=new Map(),M=new Map();
 const KIND={xy:'Point (x, y)',on:'Point on object',free:'Point',mid:'Midpoint',int:'Intersection',line:'Line',perp:'Perpendicular',para:'Parallel',pbis:'Perp. bisector',abis:'Angle bisector',seg:'Segment',circ:'Circle'};
 const isPt=o=>o.k==='free'||o.k==='mid'||o.k==='int'||o.k==='on'||o.k==='xy';
@@ -353,7 +354,36 @@ function hitLabel(w){
  return null;
 }
 function render(B,ui){GC.clear();M=new Map(S.objs.map(o=>[o.id,o]));B.begin&&B.begin();paperPattern(B);for(const s of S.strokes)B.stroke(s.pts,INK[s.c]||INK.black,s.w||3.2,1,true);const vis=S.objs.filter(o=>o.vis);if(ui&&hover!=null){const h=M.get(hover),g=h&&h.vis&&geo(hover);if(g){if(g.t==='p')B.disc(g.x,g.y,15,'#611224',.22);else shape(B,g,'#611224',9,.22)}}for(const o of vis){if(isPt(o))continue;const g=geo(o.id);if(g)shape(B,g,INK[o.c]||INK.black,2.3)}for(const o of vis){if(!isPt(o))continue;const g=geo(o.id);if(g){B.disc(g.x,g.y,8,PAPER);B.disc(g.x,g.y,4.8,INK[o.c]||INK.black)}}if(DOC.labels)for(const o of vis){if(!o.name)continue;const g=geo(o.id);if(!g)continue;const p=getLabelPos(o);if(p)B.text(o.name,p[0],p[1],INK[o.c]||INK.black,23)}if(ui)overlay(B)}
-function overlay(B){for(const p of pend){const g=geo(p.id);if(!g)continue;if(g.t==='p')B.circle(g.x,g.y,12,'#611224',2.4);else shape(B,g,'#611224',7,.35)}const last=pend.length&&geo(pend[pend.length-1].id);if(last&&last.t==='p'&&cur){if(tool==='circle')B.circle(last.x,last.y,Math.hypot(cur.x-last.x,cur.y-last.y),'#611224',1.8,.7);else if(['line','seg','mid','pbis','abis'].includes(tool))B.stroke([[last.x,last.y],[cur.x,cur.y]],'#611224',1.8,.7)}if(tool==='erase'&&cur)B.circle(cur.x,cur.y,16,'#611224',1.6,.9)}
+/* Ruler: a 15 cm ruler (the page is A4 landscape, so 1 cm = W/29.7 units). Not saved and not exported. */
+const CM=W/29.7,RLEN=15*CM,RTH=120,EB=18;
+const rLocal=w=>{const c=Math.cos(ruler.a),s=Math.sin(ruler.a),dx=w.x-ruler.x,dy=w.y-ruler.y;return {u:dx*c+dy*s,v:-dx*s+dy*c}};
+const rWorld=(u,v)=>{const c=Math.cos(ruler.a),s=Math.sin(ruler.a);return [ruler.x+u*c-v*s,ruler.y+u*s+v*c]};
+function rulerEdge(w){if(!ruler.on)return null;const l=rLocal(w);if(Math.abs(l.u)<=RLEN/2+10&&Math.abs(Math.abs(l.v)-RTH/2)<=EB)return {sgn:l.v<0?-1:1,u:clamp(l.u,-RLEN/2,RLEN/2)};return null}
+function hitRuler(w){
+ if(!ruler.on)return null;
+ const h=rWorld(RLEN/2+34,0);if(Math.hypot(w.x-h[0],w.y-h[1])<=34)return {t:'rot'};
+ const l=rLocal(w);if(Math.abs(l.u)<=RLEN/2&&Math.abs(l.v)<RTH/2-EB)return {t:'move'};
+ return null;
+}
+function rulerDrag(kind,w){
+ if(kind==='rot')return {move(p){let a=Math.atan2(p.y-ruler.y,p.x-ruler.x);const st=Math.PI/12,sn=Math.round(a/st)*st;if(Math.abs(a-sn)<.04)a=sn;ruler.a=a},up(){}};
+ const ox=w.x-ruler.x,oy=w.y-ruler.y;
+ return {move(p){ruler.x=clamp(p.x-ox,0,W);ruler.y=clamp(p.y-oy,0,H)},up(){}};
+}
+function visCenter(){const sr=$('.stage').getBoundingClientRect(),r=cv.getBoundingClientRect(),l=Math.max(r.left,sr.left),rt=Math.min(r.right,sr.right),t=Math.max(r.top,sr.top),b=Math.min(r.bottom,sr.bottom);return {x:clamp(((l+rt)/2-r.left)*W/r.width,0,W),y:clamp(((t+b)/2-r.top)*H/r.height,0,H)}}
+function drawRuler(B){
+ if(!ruler.on)return;
+ const hl=RLEN/2,ht=RTH/2,AC='#611224',cs=[rWorld(-hl,-ht),rWorld(hl,-ht),rWorld(hl,ht),rWorld(-hl,ht)];
+ B.poly(cs,'#FBC5C5',.6);B.stroke([...cs,cs[0]],AC,2,.9);
+ const n=Math.round(RLEN/(CM/10));
+ for(let i=0;i<=n;i++){
+  const u=-hl+i*CM/10,len=i%10===0?30:i%5===0?22:13,a=rWorld(u,-ht),b=rWorld(u,-ht+len),c=rWorld(u,ht),d=rWorld(u,ht-len);
+  B.stroke([a,b],AC,1.4,.9);B.stroke([c,d],AC,1.4,.9);
+  if(i%10===0&&i>0&&i<n){const t=rWorld(u,-ht+len+15);B.text(String(i/10),t[0],t[1]+5,AC,15,'c')}
+ }
+ const hp=rWorld(hl+34,0);B.stroke([rWorld(hl,0),hp],AC,2,.6);B.disc(hp[0],hp[1],22,AC,.9);B.disc(hp[0],hp[1],10,PAPER,1);
+}
+function overlay(B){drawRuler(B);for(const p of pend){const g=geo(p.id);if(!g)continue;if(g.t==='p')B.circle(g.x,g.y,12,'#611224',2.4);else shape(B,g,'#611224',7,.35)}const last=pend.length&&geo(pend[pend.length-1].id);if(last&&last.t==='p'&&cur){if(tool==='circle')B.circle(last.x,last.y,Math.hypot(cur.x-last.x,cur.y-last.y),'#611224',1.8,.7);else if(['line','seg','mid','pbis','abis'].includes(tool))B.stroke([[last.x,last.y],[cur.x,cur.y]],'#611224',1.8,.7)}if(tool==='erase'&&cur)B.circle(cur.x,cur.y,16,'#611224',1.6,.9)}
 /* Pen strokes are drawn as smooth curves (quadratic through the midpoints); other polylines stay straight. */
 function tracePath(g,p,sm){
  g.beginPath();g.moveTo(p[0][0],p[0][1]);
@@ -367,6 +397,7 @@ const CB={
  circle(x,y,r,c,w,a=1){ctx.globalAlpha=a;ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.arc(x,y,Math.max(r,.01),0,Math.PI*2);ctx.stroke();ctx.globalAlpha=1},
  disc(x,y,r,c,a=1){ctx.globalAlpha=a;ctx.fillStyle=c;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1},
  text(s,x,y,c,sz,al){ctx.font='italic '+sz+'px Georgia,"Times New Roman",serif';ctx.fillStyle=c;ctx.textAlign=al==='c'?'center':al==='r'?'right':'left';ctx.fillText(s,x,y);ctx.textAlign='left'},
+ poly(p,c,a=1){ctx.globalAlpha=a;ctx.fillStyle=c;ctx.beginPath();p.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]));ctx.closePath();ctx.fill();ctx.globalAlpha=1},
  begin(){ctx.fillStyle=PAPER;ctx.fillRect(0,0,W,H)}
 };
 function fitCanvas(){
@@ -413,7 +444,7 @@ function eraseAt(w){let any=false;const n=S.strokes.length;S.strokes=S.strokes.f
 const ic=p=>'<svg viewBox="0 0 24 24">'+p+'</svg>';
 const D=(x,y)=>`<circle class="f" cx="${x}" cy="${y}" r="2.1"/>`;
 const TOOLS={
- pen:{label:'Pen',icon:ic('<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>'),hint:()=>'Draw freely with the selected ink and thickness.',down(w){const s={c:ink,w:penWidth,pts:[[w.x,w.y]]};S.strokes.push(s);drag={move(p){const l=s.pts[s.pts.length-1];if(Math.hypot(p.x-l[0],p.y-l[1])>1.5)s.pts.push([p.x,p.y])},up(){changed()}}}},
+ pen:{label:'Pen',icon:ic('<path d="M4 20l1-4L16 5l3 3L8 19z"/><path d="M14 7l3 3"/>'),hint:()=>'Draw freely with the selected ink and thickness.',down(w){const s={c:ink,w:penWidth,pts:[[w.x,w.y]]};S.strokes.push(s);const re=rulerEdge(w);if(re){const a=rWorld(re.u,re.sgn*RTH/2);s.pts=[a,a.slice()];drag={move(p){const l=rLocal(p);s.pts=[a,rWorld(clamp(l.u,-RLEN/2,RLEN/2),re.sgn*RTH/2)]},up(){changed()}};return}drag={move(p){const l=s.pts[s.pts.length-1];if(Math.hypot(p.x-l[0],p.y-l[1])>1.5)s.pts.push([p.x,p.y])},up(){changed()}}}},
  erase:{label:'Eraser',icon:ic('<path d="M7 20h12M5.5 14.5l8-8a1.6 1.6 0 012.2 0l2.8 2.8a1.6 1.6 0 010 2.2L12 19H8z"/>'),hint:()=>'Drag over strokes, lines, circles or points to erase them.',down(w){drag={erased:false,move:eraseAt,up(){}};eraseAt(w)}},
  move:{label:'Move',icon:ic('<path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/>'),hint:()=>'Drag a free point, or slide a point along the line, segment or circle it sits on.',down(w){const h=hitPoint(w);if(!h)return;if(h.k==='xy'){drag={moved:false,move(p){const m=toMath(clamp(p.x,0,W),clamp(p.y,0,H));h.mx=+m.x.toFixed(3);h.my=+m.y.toFixed(3);this.moved=true},up(){if(this.moved)changed()}};return}if(h.k==='on'){drag={moved:false,move(p){const g=geo(h.refs[0]);if(g){Object.assign(h,paramOn(g,p));this.moved=true}},up(){if(this.moved)changed()}};return}if(h.k!=='free'){toast('This point is set by its construction. Move the points it depends on.');return}drag={moved:false,move(p){h.x=clamp(p.x,0,W);h.y=clamp(p.y,0,H);this.moved=true},up(){if(this.moved)changed()}}}},
  point:{label:'Point',icon:ic(D(12,12).replace('2.1','3.6')+'<circle cx="12" cy="12" r="8" stroke-dasharray="2 3"/>'),hint:()=>'Click empty paper for a free point, on a line, segment or circle to attach a point to it, or where two objects cross for their intersection.',down(w){pickPt(w)}},
@@ -436,9 +467,9 @@ TOOLS.label={label:'Label',icon:ic('<path d="M4 5h16M12 5v14M8 19h8"/>'),hint:()
  const startX=w.x,startY=w.y,startDx=h.labelDx||0,startDy=h.labelDy||0;
  drag={moved:false,move(p){h.labelDx=startDx+p.x-startX;h.labelDy=startDy+p.y-startY;if(Math.hypot(p.x-startX,p.y-startY)>1)this.moved=true},up(){if(this.moved)changed();else{h.labelDx=startDx;h.labelDy=startDy}}};
 }};
-function buildTools(){const box=$('#tools');for(const id of ['move','pen','erase','label','point','mid','line','seg','perp','para','pbis','abis','circle']){const t=TOOLS[id],b=document.createElement('button');b.className='tool';b.dataset.t=id;b.setAttribute('aria-pressed','false');b.innerHTML=t.icon+'<span>'+t.label+'</span>';box.append(b)}const ob=document.createElement('button');ob.className='tool sep';ob.id='objOpen';ob.innerHTML=ic('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>')+'<span>Objects</span>';box.append(ob)}
+function buildTools(){const box=$('#tools');for(const id of ['move','pen','erase','label','point','mid','line','seg','perp','para','pbis','abis','circle']){const t=TOOLS[id],b=document.createElement('button');b.className='tool';b.dataset.t=id;b.setAttribute('aria-pressed','false');b.innerHTML=t.icon+'<span>'+t.label+'</span>';box.append(b)}const rb=document.createElement('button');rb.className='tool';rb.id='rulerBtn';rb.setAttribute('aria-pressed','false');rb.title='Show or hide the ruler';rb.innerHTML=ic('<rect x="2" y="8" width="20" height="8" rx="1.2"/><path d="M6 8v3.5M10 8v5M14 8v3.5M18 8v5"/>')+'<span>Ruler</span>';box.append(rb);const ob=document.createElement('button');ob.className='tool sep';ob.id='objOpen';ob.innerHTML=ic('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>')+'<span>Objects</span>';box.append(ob)}
 function setTool(t){tool=t;if(t!=='pen')penOpen=false;pend=[];hover=null;syncUI();draw()}
-function syncUI(){document.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===tool)));document.querySelectorAll('#inks .sw').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===ink)));document.querySelectorAll('#paper button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.paper)));$('#lbl').checked=DOC.labels;{const oxy=S.paper==='oxy';$('#oxyDlg').hidden=!oxy;placeOxy();if(oxy){const a=ax();for(const [id,v] of [['#ux',a.sx],['#uy',a.sy],['#mxx',a.maxx],['#mxy',a.maxy]])if(document.activeElement!==$(id))$(id).value=v}}renderPages();{const pd=$('#penDlg');pd.hidden=!(penOpen&&tool==='pen');if(!pd.hidden){$('#penPrev').style.height=penWidth+'px';$('#penPrev').style.background=INK[ink];placePen()}}{const dd=$('#paperDlg');dd.hidden=!paperOpen;$('#paperBtn').setAttribute('aria-pressed',String(paperOpen));if(!dd.hidden)placePaper()}$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;cv.style.cursor=tool==='erase'?'cell':tool==='move'?'grab':tool==='label'?'move':'crosshair';$('#hint').innerHTML='<b>'+TOOLS[tool].label+'.</b> '+TOOLS[tool].hint()}
+function syncUI(){document.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===tool)));document.querySelectorAll('#inks .sw').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===ink)));document.querySelectorAll('#paper button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.paper)));$('#lbl').checked=DOC.labels;{const oxy=S.paper==='oxy';$('#oxyDlg').hidden=!oxy;placeOxy();if(oxy){const a=ax();for(const [id,v] of [['#ux',a.sx],['#uy',a.sy],['#mxx',a.maxx],['#mxy',a.maxy]])if(document.activeElement!==$(id))$(id).value=v}}renderPages();{const pd=$('#penDlg');pd.hidden=!(penOpen&&tool==='pen');if(!pd.hidden){$('#penPrev').style.height=penWidth+'px';$('#penPrev').style.background=INK[ink];placePen()}}{const dd=$('#paperDlg');dd.hidden=!paperOpen;$('#paperBtn').setAttribute('aria-pressed',String(paperOpen));if(!dd.hidden)placePaper()}$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;cv.style.cursor=tool==='erase'?'cell':tool==='move'?'grab':tool==='label'?'move':'crosshair';$('#rulerBtn').setAttribute('aria-pressed',String(ruler.on));$('#hint').innerHTML='<b>'+TOOLS[tool].label+'.</b> '+TOOLS[tool].hint()+(ruler.on?' <i>Ruler: drag its body to move it, drag the round handle to turn it, and draw along an edge with the pen for a straight line.</i>':'')}
 function kindText(o){if(S.paper==='oxy'&&isPt(o)){const g=geo(o.id);if(g){const m=toMath(g.x,g.y);return '('+fmt(m.x)+', '+fmt(m.y)+')'}}return KIND[o.k]}
 function renderList(){GC.clear();M=new Map(S.objs.map(o=>[o.id,o]));const ul=$('#list');if(!S.objs.length){ul.innerHTML='<li class="empty" style="display:block">Points, lines, segments and circles you construct appear here. Rename, hide or delete them from this list.</li>';return}ul.innerHTML=S.objs.map(o=>`<li data-id="${o.id}" class="${o.vis?'':'off'}"><button class="ic eye" title="${o.vis?'Hide':'Show'}" aria-label="${o.vis?'Hide':'Show'} ${esc(o.name)}">${o.vis?EYE:EYE_OFF}</button><button class="ic cc" title="Change color" aria-label="Change color"><span class="dot" style="background:${INK[o.c]}"></span></button><input class="nm" value="${esc(o.name)}" aria-label="Name" maxlength="24" spellcheck="false"><span class="kind">${kindText(o)}</span><button class="ic del" title="Delete" aria-label="Delete ${esc(o.name)}">${TRASH}</button></li>`).join('')}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -469,7 +500,10 @@ cv.addEventListener('pointerdown',e=>{
  e.preventDefault();
  activePointer=e.pointerId;
  try{cv.setPointerCapture(e.pointerId)}catch(_){}
- cur=pos(e);drag=null;TOOLS[tool].down(cur);afterAction();
+ cur=pos(e);drag=null;
+ const rh=hitRuler(cur);
+ if(rh)drag=rulerDrag(rh.t,cur);else TOOLS[tool].down(cur);
+ afterAction();
 });
 cv.addEventListener('pointermove',e=>{
  if(rejected(e))return;
@@ -510,6 +544,7 @@ function placePop(d,b){
 window.addEventListener('resize',()=>{placePen();placePaper();placeOxy()});$('.stage').addEventListener('scroll',placeOxy,{passive:true});window.addEventListener('scroll',()=>{placePen();placePaper()},{passive:true});
 $('#tools').addEventListener('click',e=>{
  if(e.target.closest('#objOpen')){setObjMode(true);return}
+ if(e.target.closest('#rulerBtn')){ruler.on=!ruler.on;if(ruler.on){const c=visCenter();ruler.x=c.x;ruler.y=c.y}syncUI();draw();return}
  const b=e.target.closest('[data-t]');if(!b)return;
  if(b.dataset.t==='pen'){if(tool==='pen'){penOpen=!penOpen;if(penOpen)paperOpen=false;syncUI()}else{setTool('pen');penOpen=true;paperOpen=false;syncUI()}return}
  setTool(b.dataset.t);
