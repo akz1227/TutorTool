@@ -67,7 +67,8 @@ button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid va
 .stagebox{position:relative;min-width:0}
 .oxydlg,.pendlg{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(50,20,30,.2)}
 .oxydlg{position:absolute;top:21px;right:21px;z-index:5;padding:6px;max-width:calc(100% - 42px)}
-.oxydlg .btn{font-weight:600;color:var(--accent)}
+.oxydlg{display:flex;flex-direction:column;align-items:stretch}
+.oxydlg #oxyToggle{align-self:flex-end;font-weight:600;color:var(--accent)}
 .oxybody{display:flex;flex-direction:column;gap:12px;padding:10px 6px 6px}
 .pendlg{position:fixed;z-index:30;width:230px;padding:12px;display:flex;flex-direction:column;gap:12px}
 .pendlg input[type=range]{width:100%}
