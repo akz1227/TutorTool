@@ -64,7 +64,16 @@ button:focus-visible,input:focus-visible,label:focus-within{outline:2px solid va
 .h2r{display:flex;align-items:center;gap:10px}
 .xbtn{width:28px;height:28px;border:1px solid var(--line);background:var(--panel);border-radius:7px;font-size:19px;line-height:1;display:grid;place-items:center;padding:0;color:var(--fg)}
 .xbtn:hover{background:var(--hover)}
-.oxybar{display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:flex-end;gap:10px 18px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+.stagebox{position:relative;min-width:0}
+.oxydlg,.pendlg{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(50,20,30,.2)}
+.oxydlg{position:absolute;top:21px;right:21px;z-index:5;padding:6px;max-width:calc(100% - 42px)}
+.oxydlg .btn{font-weight:600;color:var(--accent)}
+.oxybody{display:flex;flex-direction:column;gap:12px;padding:10px 6px 6px}
+.pendlg{position:fixed;z-index:30;width:230px;padding:12px;display:flex;flex-direction:column;gap:12px}
+.pendlg input[type=range]{width:100%}
+.pendlg .tv{display:flex;align-items:center;gap:8px}
+#penPrev{display:block;width:100%;border-radius:99px;min-height:1px;background:var(--ink-black)}
+.prevbox{height:30px;display:flex;align-items:center;border:1px dashed var(--line);border-radius:7px;padding:0 10px}
 .lim{font:700 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);width:68px}
 .side h2{font:700 15px/1 var(--f-display);color:var(--accent);margin:0;padding:13px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
 .side h2 label{font:400 12px var(--f-body);color:var(--muted);display:flex;gap:5px;align-items:center}
@@ -89,7 +98,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
 #thicknessValue,#zoomValue{min-width:46px;color:var(--accent);font:500 12px var(--f-mono)}
 @media(max-width:860px){.main{grid-template-columns:minmax(0,1fr)}.side{position:static;max-height:none}.stage{padding:6px}#tools{flex-direction:row;flex-wrap:wrap}.tool{width:auto}.tool.sep{margin-top:0;border-top:1px solid transparent;padding-top:7px;border-radius:8px}}
 @media(max-width:480px){.tool span{font-size:12px}.top h1{width:100%;margin-bottom:5px}.stage{padding:4px}}
-@media print{body{padding:0;background:#fff}.top,.bar,.pages,.oxybar,.hint,.side,.toast{display:none!important}.main{display:block}.stage{padding:0;border:0;background:#fff}#cv{box-shadow:none;width:100%!important}.stage{overflow:visible;max-height:none!important}}
+@media print{body{padding:0;background:#fff}.top,.bar,.pages,.oxydlg,.pendlg,.hint,.side,.toast{display:none!important}.main{display:block}.stage{padding:0;border:0;background:#fff}#cv{box-shadow:none;width:100%!important}.stage{overflow:visible;max-height:none!important}}
 </style>
 </head>
 <body>
@@ -112,16 +121,7 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
       <output id="zoomValue">100%</output>
       <button class="btn" id="zoomReset" title="Fit to width (0)">Fit</button>
     </div></div>
-    <div class="grp"><span>Ink</span><div class="row" id="inks">
-      <button class="sw red" data-v="red" aria-label="Red" aria-pressed="false"></button>
-      <button class="sw blue" data-v="blue" aria-label="Blue" aria-pressed="false"></button>
-      <button class="sw black" data-v="black" aria-label="Charcoal" aria-pressed="true"></button>
-    </div></div>
-    <div class="grp"><span>Pen thickness</span><div class="row">
-      <input id="thickness" type="range" min="1" max="12" step="0.5" value="3.2" aria-label="Pen thickness" style="width:120px">
-      <output id="thicknessValue">3.2 px</output>
-    </div></div>
-      </div>
+    </div>
   <div class="main">
     <aside class="side" id="side">
       <div class="sv" id="toolsView">
@@ -135,26 +135,43 @@ input[type=range]{accent-color:var(--accent);cursor:pointer}
     </aside>
     <div class="stagewrap">
       <div class="pages" id="pages"></div>
-      <div class="oxybar" id="oxyBar" hidden>
-        <div class="grp"><span>Place point (x, y)</span><div class="row">
-          <label class="fld">x <input id="px" type="number" step="any" value="0" aria-label="x coordinate"></label>
-          <label class="fld">y <input id="py" type="number" step="any" value="0" aria-label="y coordinate"></label>
-          <button class="btn" id="addxy">Add point</button>
-        </div></div>
-        <div class="grp"><span>Axis range</span>
-          <div class="row"><b class="lim" title="Largest value shown on each axis">Maximum</b>
-            <label class="fld">x <input id="mxx" type="number" step="any" min="0" value="30" aria-label="Maximum of x"></label>
-            <label class="fld">y <input id="mxy" type="number" step="any" min="0" value="21" aria-label="Maximum of y"></label></div>
-          <div class="row"><b class="lim" title="Value of one grid square">Minimum</b>
-            <label class="fld">x <input id="ux" type="number" step="any" min="0" value="1" aria-label="Minimum of x"></label>
-            <label class="fld">y <input id="uy" type="number" step="any" min="0" value="1" aria-label="Minimum of y"></label></div>
+      <div class="stagebox">
+        <div class="stage"><canvas id="cv" width="2400" height="1697" aria-label="Drawing paper"></canvas></div>
+        <div class="oxydlg" id="oxyDlg" role="group" aria-label="Oxy settings" hidden>
+          <button class="btn" id="oxyToggle" aria-expanded="true" aria-controls="oxyBody" title="Show or hide the Oxy settings">Oxy settings &#9662;</button>
+          <div class="oxybody" id="oxyBody">
+            <div class="grp"><span>Place point (x, y)</span><div class="row">
+              <label class="fld">x <input id="px" type="number" step="any" value="0" aria-label="x coordinate"></label>
+              <label class="fld">y <input id="py" type="number" step="any" value="0" aria-label="y coordinate"></label>
+              <button class="btn" id="addxy">Add point</button>
+            </div></div>
+            <div class="grp"><span>Axis range</span>
+              <div class="row"><b class="lim" title="Largest value shown on each axis">Maximum</b>
+                <label class="fld">x <input id="mxx" type="number" step="any" min="0" value="30" aria-label="Maximum of x"></label>
+                <label class="fld">y <input id="mxy" type="number" step="any" min="0" value="21" aria-label="Maximum of y"></label></div>
+              <div class="row"><b class="lim" title="Value of one grid square">Minimum</b>
+                <label class="fld">x <input id="ux" type="number" step="any" min="0" value="1" aria-label="Minimum of x"></label>
+                <label class="fld">y <input id="uy" type="number" step="any" min="0" value="1" aria-label="Minimum of y"></label></div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="stage"><canvas id="cv" width="2400" height="1697" aria-label="Drawing paper"></canvas></div>
       <div class="hint" id="hint"></div>
     </div>
   
   </div>
+</div>
+<div class="pendlg" id="penDlg" role="dialog" aria-label="Pen settings" hidden>
+  <div class="grp"><span>Ink</span><div class="row" id="inks">
+    <button class="sw red" data-v="red" aria-label="Red" aria-pressed="false"></button>
+    <button class="sw blue" data-v="blue" aria-label="Blue" aria-pressed="false"></button>
+    <button class="sw black" data-v="black" aria-label="Charcoal" aria-pressed="true"></button>
+  </div></div>
+  <div class="grp"><span>Thickness</span><div class="tv">
+    <input id="thickness" type="range" min="1" max="12" step="0.5" value="3.2" aria-label="Pen thickness">
+    <output id="thicknessValue">3.2 px</output>
+  </div></div>
+  <div class="prevbox"><i id="penPrev" style="height:3.2px"></i></div>
 </div>
 <div class="toast" id="toast" hidden></div>
 <script>
@@ -165,7 +182,7 @@ const PAPER='#FFFDF9';
 const $=s=>document.querySelector(s),cv=$('#cv'),ctx=cv.getContext('2d');
 const newPage=paper=>({paper:paper||'blank',objs:[],strokes:[],n:{p:0,l:0,s:0,c:0},id:1,ax:{sx:1,sy:1,maxx:30,maxy:21}});
 let DOC={labels:true,cur:0,pages:[newPage()]},S=DOC.pages[0];
-let ink='black',tool='pen',pend=[],hover=null,cur=null,penWidth=3.2;
+let ink='black',tool='pen',pend=[],hover=null,cur=null,penWidth=3.2,penOpen=false;
 let GC=new Map(),M=new Map();
 const KIND={xy:'Point (x, y)',on:'Point on object',free:'Point',mid:'Midpoint',int:'Intersection',line:'Line',perp:'Perpendicular',para:'Parallel',pbis:'Perp. bisector',abis:'Angle bisector',seg:'Segment',circ:'Circle'};
 const isPt=o=>o.k==='free'||o.k==='mid'||o.k==='int'||o.k==='on'||o.k==='xy';
@@ -396,9 +413,9 @@ TOOLS.label={label:'Label',icon:ic('<path d="M4 5h16M12 5v14M8 19h8"/>'),hint:()
  const startX=w.x,startY=w.y,startDx=h.labelDx||0,startDy=h.labelDy||0;
  drag={moved:false,move(p){h.labelDx=startDx+p.x-startX;h.labelDy=startDy+p.y-startY;if(Math.hypot(p.x-startX,p.y-startY)>1)this.moved=true},up(){if(this.moved)changed();else{h.labelDx=startDx;h.labelDy=startDy}}};
 }};
-function buildTools(){const box=$('#tools');for(const id of ['pen','move','label','point','mid','line','seg','perp','para','pbis','abis','circle','erase']){const t=TOOLS[id],b=document.createElement('button');b.className='tool';b.dataset.t=id;b.setAttribute('aria-pressed','false');b.innerHTML=t.icon+'<span>'+t.label+'</span>';box.append(b)}const ob=document.createElement('button');ob.className='tool sep';ob.id='objOpen';ob.innerHTML=ic('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>')+'<span>Objects</span>';box.append(ob)}
-function setTool(t){tool=t;pend=[];hover=null;syncUI();draw()}
-function syncUI(){document.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===tool)));document.querySelectorAll('#inks .sw').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===ink&&tool!=='erase')));document.querySelectorAll('#paper button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.paper)));$('#lbl').checked=DOC.labels;{const oxy=S.paper==='oxy';$('#oxyBar').hidden=!oxy;if(oxy){const a=ax();for(const [id,v] of [['#ux',a.sx],['#uy',a.sy],['#mxx',a.maxx],['#mxy',a.maxy]])if(document.activeElement!==$(id))$(id).value=v}}renderPages();$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;cv.style.cursor=tool==='erase'?'cell':tool==='move'?'grab':tool==='label'?'move':'crosshair';$('#hint').innerHTML='<b>'+TOOLS[tool].label+'.</b> '+TOOLS[tool].hint()}
+function buildTools(){const box=$('#tools');for(const id of ['move','pen','erase','label','point','mid','line','seg','perp','para','pbis','abis','circle']){const t=TOOLS[id],b=document.createElement('button');b.className='tool';b.dataset.t=id;b.setAttribute('aria-pressed','false');b.innerHTML=t.icon+'<span>'+t.label+'</span>';box.append(b)}const ob=document.createElement('button');ob.className='tool sep';ob.id='objOpen';ob.innerHTML=ic('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2"/><circle cx="4.5" cy="12" r="1.2"/><circle cx="4.5" cy="18" r="1.2"/>')+'<span>Objects</span>';box.append(ob)}
+function setTool(t){tool=t;if(t!=='pen')penOpen=false;pend=[];hover=null;syncUI();draw()}
+function syncUI(){document.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===tool)));document.querySelectorAll('#inks .sw').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===ink)));document.querySelectorAll('#paper button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===S.paper)));$('#lbl').checked=DOC.labels;{const oxy=S.paper==='oxy';$('#oxyDlg').hidden=!oxy;placeOxy();if(oxy){const a=ax();for(const [id,v] of [['#ux',a.sx],['#uy',a.sy],['#mxx',a.maxx],['#mxy',a.maxy]])if(document.activeElement!==$(id))$(id).value=v}}renderPages();{const pd=$('#penDlg');pd.hidden=!(penOpen&&tool==='pen');if(!pd.hidden){$('#penPrev').style.height=penWidth+'px';$('#penPrev').style.background=INK[ink];placePen()}}$('#undo').disabled=hi<=0;$('#redo').disabled=hi>=hist.length-1;cv.style.cursor=tool==='erase'?'cell':tool==='move'?'grab':tool==='label'?'move':'crosshair';$('#hint').innerHTML='<b>'+TOOLS[tool].label+'.</b> '+TOOLS[tool].hint()}
 function kindText(o){if(S.paper==='oxy'&&isPt(o)){const g=geo(o.id);if(g){const m=toMath(g.x,g.y);return '('+fmt(m.x)+', '+fmt(m.y)+')'}}return KIND[o.k]}
 function renderList(){GC.clear();M=new Map(S.objs.map(o=>[o.id,o]));const ul=$('#list');if(!S.objs.length){ul.innerHTML='<li class="empty" style="display:block">Points, lines, segments and circles you construct appear here. Rename, hide or delete them from this list.</li>';return}ul.innerHTML=S.objs.map(o=>`<li data-id="${o.id}" class="${o.vis?'':'off'}"><button class="ic eye" title="${o.vis?'Hide':'Show'}" aria-label="${o.vis?'Hide':'Show'} ${esc(o.name)}">${o.vis?EYE:EYE_OFF}</button><button class="ic cc" title="Change color" aria-label="Change color"><span class="dot" style="background:${INK[o.c]}"></span></button><input class="nm" value="${esc(o.name)}" aria-label="Name" maxlength="24" spellcheck="false"><span class="kind">${kindText(o)}</span><button class="ic del" title="Delete" aria-label="Delete ${esc(o.name)}">${TRASH}</button></li>`).join('')}
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -450,13 +467,38 @@ cv.addEventListener('pointerup',endDrag);
 cv.addEventListener('pointercancel',endDrag);
 cv.addEventListener('pointerleave',e=>{if(rejected(e))return;if(!drag){cur=null;hover=null;draw()}});
 
-$('#tools').addEventListener('click',e=>{if(e.target.closest('#objOpen')){setObjMode(true);return}const b=e.target.closest('[data-t]');if(b)setTool(b.dataset.t)});
+/* Pen: choosing Pen opens its dialog (ink + thickness); choosing Pen again closes it. */
+/* Oxy dialog: 10px below the top edge and 10px left of the right edge of the visible paper. */
+function placeOxy(){
+ const d=$('#oxyDlg');if(d.hidden)return;
+ const box=$('.stagebox').getBoundingClientRect(),st=$('.stage'),sr=st.getBoundingClientRect(),c=cv.getBoundingClientRect();
+ const visRight=Math.min(c.right,sr.left+st.clientLeft+st.clientWidth),visTop=Math.max(c.top,sr.top+st.clientTop);
+ d.style.left='auto';d.style.top=(visTop-box.top+10)+'px';d.style.right=(box.right-visRight+10)+'px';
+}
+function placePen(){
+ const d=$('#penDlg'),b=document.querySelector('#tools [data-t="pen"]');if(d.hidden||!b)return;
+ const br=b.getBoundingClientRect(),sr=$('#side').getBoundingClientRect(),narrow=window.matchMedia('(max-width:860px)').matches,dr=d.getBoundingClientRect();
+ let left=narrow?br.left:sr.right+8,top=narrow?br.bottom+6:br.top;
+ left=Math.max(8,Math.min(left,window.innerWidth-dr.width-8));top=Math.max(8,Math.min(top,window.innerHeight-dr.height-8));
+ d.style.left=left+'px';d.style.top=top+'px';
+}
+window.addEventListener('resize',()=>{placePen();placeOxy()});$('.stage').addEventListener('scroll',placeOxy,{passive:true});window.addEventListener('scroll',placePen,{passive:true});
+$('#tools').addEventListener('click',e=>{
+ if(e.target.closest('#objOpen')){setObjMode(true);return}
+ const b=e.target.closest('[data-t]');if(!b)return;
+ if(b.dataset.t==='pen'){if(tool==='pen'){penOpen=!penOpen;syncUI()}else{setTool('pen');penOpen=true;syncUI()}return}
+ setTool(b.dataset.t);
+});
+/* Oxy settings: one button opens/closes the fixed dialog at the top-left of the sketch board. */
+function setOxyOpen(v){$('#oxyBody').hidden=!v;$('#oxyToggle').setAttribute('aria-expanded',String(v));$('#oxyToggle').innerHTML='Oxy settings '+(v?'&#9662;':'&#9656;')}
+let oxyOpen=true;setOxyOpen(true);
+$('#oxyToggle').addEventListener('click',()=>{oxyOpen=!oxyOpen;setOxyOpen(oxyOpen)});
 /* Objects view replaces the tools list in the left panel; x goes back to the tools. */
-function setObjMode(v){$('#toolsView').hidden=v;$('#objView').hidden=!v;if(v)renderList()}
+function setObjMode(v){if(v){penOpen=false;syncUI()}$('#toolsView').hidden=v;$('#objView').hidden=!v;if(v)renderList()}
 $('#objClose').addEventListener('click',()=>setObjMode(false));
-$('#inks').addEventListener('click',e=>{const b=e.target.closest('.sw');if(!b)return;ink=b.dataset.v;if(tool==='erase')tool='pen';pend=[];syncUI();draw()});
+$('#inks').addEventListener('click',e=>{const b=e.target.closest('.sw');if(!b)return;ink=b.dataset.v;syncUI()});
 $('#paper').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;S.paper=b.dataset.v;save();renderList();syncUI();draw()});
-$('#thickness').addEventListener('input',e=>{penWidth=Number(e.target.value);$('#thicknessValue').textContent=penWidth+' px'});
+$('#thickness').addEventListener('input',e=>{penWidth=Number(e.target.value);$('#thicknessValue').textContent=penWidth+' px';$('#penPrev').style.height=penWidth+'px'});
 /* Paper scale: 100% fits the width; larger values zoom in (scroll the paper area), smaller values shrink it. */
 let zoom=1;
 function setZoom(z,cx,cy){
@@ -468,7 +510,7 @@ function setZoom(z,cx,cy){
  const r2=cv.getBoundingClientRect();
  st.scrollLeft+=r2.left+fx*r2.width-cx;st.scrollTop+=r2.top+fy*r2.height-cy;
  $('#zoom').value=Math.round(z*100);$('#zoomValue').textContent=Math.round(z*100)+'%';
- draw();
+ draw();placeOxy();
 }
 $('#zoom').addEventListener('input',e=>setZoom(Number(e.target.value)/100));
 $('#zoomIn').addEventListener('click',()=>setZoom(zoom*1.25));
@@ -495,7 +537,7 @@ L.addEventListener('click',e=>{const li=e.target.closest('li[data-id]');if(!li)r
 L.addEventListener('input',e=>{if(!e.target.classList.contains('nm'))return;const o=S.objs.find(x=>x.id==e.target.closest('li').dataset.id);if(o){o.name=e.target.value;draw()}});
 L.addEventListener('change',e=>{if(e.target.classList.contains('nm'))save()});
 L.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('nm'))e.target.blur()});
-document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(e.key==='Escape'){pend=[];syncUI();draw()}else if(!e.ctrlKey&&!e.metaKey&&(e.key==='+'||e.key==='='))setZoom(zoom*1.25);else if(!e.ctrlKey&&!e.metaKey&&(e.key==='-'||e.key==='_'))setZoom(zoom/1.25);else if(!e.ctrlKey&&!e.metaKey&&e.key==='0')setZoom(1)});
+document.addEventListener('keydown',e=>{if(e.target.tagName==='INPUT')return;if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo()}else if(e.key==='Escape'){pend=[];penOpen=false;syncUI();draw()}else if(!e.ctrlKey&&!e.metaKey&&(e.key==='+'||e.key==='='))setZoom(zoom*1.25);else if(!e.ctrlKey&&!e.metaKey&&(e.key==='-'||e.key==='_'))setZoom(zoom/1.25);else if(!e.ctrlKey&&!e.metaKey&&e.key==='0')setZoom(1)});
 cv.width=W*2;cv.height=H*2;ctx.setTransform(2,0,0,2,0,0);refreshAll();
 /* Export the current sketch as a printable PDF using the browser's print dialog. */
 $('#pdf').addEventListener('click',()=>{const keep=S;const oldCur=DOC.cur;const printWindow=window.open('','_blank');if(!printWindow){toast('Allow pop-ups to export/print the sketch.');return}let pagesHtml='';for(let i=0;i<DOC.pages.length;i++){S=DOC.pages[i];const off=document.createElement('canvas');off.width=W;off.height=H;const oc=off.getContext('2d');const oldCtx=ctx;/* render through the shared backend below */const backend={begin(){oc.fillStyle=PAPER;oc.fillRect(0,0,W,H)},stroke(p,c,w,a=1){oc.globalAlpha=a;oc.strokeStyle=c;oc.lineWidth=w;oc.lineCap='round';oc.lineJoin='round';oc.beginPath();p.forEach((q,j)=>j?oc.lineTo(q[0],q[1]):oc.moveTo(q[0],q[1]));oc.stroke();oc.globalAlpha=1},circle(x,y,r,c,w,a=1){oc.globalAlpha=a;oc.strokeStyle=c;oc.lineWidth=w;oc.beginPath();oc.arc(x,y,Math.max(.01,r),0,Math.PI*2);oc.stroke();oc.globalAlpha=1},disc(x,y,r,c,a=1){oc.globalAlpha=a;oc.fillStyle=c;oc.beginPath();oc.arc(x,y,r,0,Math.PI*2);oc.fill();oc.globalAlpha=1},text(s,x,y,c,sz,al){oc.fillStyle=c;oc.font='italic '+sz+'px Georgia,serif';oc.textAlign=al==='c'?'center':al==='r'?'right':'left';oc.fillText(s,x,y);oc.textAlign='left'}};render(backend,false);pagesHtml+=`<section><img src="${off.toDataURL('image/png')}"></section>`}S=keep;DOC.cur=oldCur;draw();printWindow.document.write('<!doctype html><html><head><title>Geometry Sketchpad PDF</title><style>@page{size:A4 landscape;margin:8mm}body{margin:0}section{page-break-after:always}section:last-child{page-break-after:auto}img{display:block;width:100%;height:auto}</style></head><body>'+pagesHtml+'<script>window.onload=()=>{window.print()}<\/script></body></html>');printWindow.document.close();toast('Print dialog opened. Choose Save as PDF.')});
